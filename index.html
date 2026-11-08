@@ -221,27 +221,51 @@ document.getElementById('returnCompany').addEventListener('click',()=>{history.p
 route();render();
 </script>
 
+<style>
+.contact-overlay[hidden]{display:none!important}.contact-overlay{position:fixed;inset:0;z-index:300;background:#172c46aa;display:flex;align-items:center;justify-content:center;padding:16px}.contact-panel{width:min(100%,430px);background:#fff;border-radius:18px;padding:24px;box-shadow:0 16px 50px #14223844}.contact-panel h2{margin:0 0 16px;font-size:22px}.contact-panel p{line-height:1.7;margin:8px 0}.contact-panel .hint{font-size:13px;color:#65758a;margin:15px 0}.contact-panel .contact-open{display:block;width:100%;border:0;border-radius:12px;background:#153653;color:#fff;text-align:center;padding:15px;font-size:17px;font-weight:750;text-decoration:none;margin-top:18px;cursor:pointer}.contact-panel .contact-dismiss{width:100%;border:1px solid #dce5ed;background:#fff;border-radius:12px;padding:12px;margin-top:9px;font-size:15px}.contact-panel .contact-status{font-size:13px;color:#365b7a;min-height:20px}
+</style>
+<div class="contact-overlay" id="contactOverlay" hidden>
+ <section class="contact-panel" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
+  <h2 id="contactTitle">연락처 저장</h2>
+  <p><strong>이상기</strong> · Burst Guardian CMO</p>
+  <p>전화번호: 010-9620-0149<br>이메일: cmo@burstguardian.com</p>
+  <p class="hint">갤럭시 크롬에서는 먼저 안드로이드 공유 화면으로 연락처 파일 전달을 시도합니다. 연락처 앱이 표시되면 선택해 저장하세요. 기기에서 지원하지 않으면 VCF 파일을 열어 저장할 수 있습니다.</p>
+  <button id="contactOpen" class="contact-open" type="button">연락처로 보내기</button>
+  <p id="contactStatus" class="contact-status" role="status" aria-live="polite"></p>
+  <button class="contact-dismiss" id="contactDismiss" type="button">취소</button>
+ </section>
+</div>
 <script>
-// 저장하기: 현재 명함 연락처만 내보냅니다. 다른 명함 촬영/OCR 기능 제거.
 (() => {
-  const button = document.getElementById('saveCardBtn');
-  if (!button) return;
-  button.addEventListener('click', () => {
-    const name = '이상기';
-    const phone = '010-9620-0149';
-    const vcard = ['BEGIN:VCARD','VERSION:3.0','N:이상기;;;;','FN:'+name,
-      'ORG:Burst Guardian','TITLE:CMO','TEL;TYPE=CELL:'+phone,
-      'EMAIL:cmo@burstguardian.com','END:VCARD',''].join('\r\n');
-    const blob = new Blob(['\ufeff',vcard], {type:'text/vcard;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '이상기_Burst_Guardian.vcf';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  });
+ const button=document.getElementById('saveCardBtn');
+ const overlay=document.getElementById('contactOverlay');
+ const open=document.getElementById('contactOpen');
+ const close=document.getElementById('contactDismiss');
+ const status=document.getElementById('contactStatus');
+ const vcard=['BEGIN:VCARD','VERSION:3.0','N:;이상기;;;','FN:이상기','ORG:Burst Guardian','TITLE:CMO','TEL;TYPE=CELL:010-9620-0149','EMAIL:cmo@burstguardian.com','END:VCARD',''].join('\r\n');
+ const file=new File(['\ufeff',vcard],'Burst_Guardian_이상기.vcf',{type:'text/vcard'});
+ function fallback(){
+   const url=URL.createObjectURL(file);
+   const a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),60000);
+   status.textContent='연락처 파일이 다운로드되었습니다. 크롬 다운로드 목록에서 .vcf 파일을 터치한 뒤 연락처 앱에서 저장하세요.';
+ }
+ button.addEventListener('click',()=>{overlay.hidden=false;status.textContent='';open.focus()});
+ open.addEventListener('click',async()=>{
+   open.disabled=true;
+   try{
+     if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+       await navigator.share({files:[file],title:'이상기 · Burst Guardian 연락처'});
+       status.textContent='공유가 완료되었다면 선택한 앱에서 연락처 저장을 확인하세요.';
+     }else fallback();
+   }catch(err){
+     if(err.name==='AbortError')status.textContent='공유가 취소되었습니다.';
+     else fallback();
+   }finally{open.disabled=false;}
+ });
+ close.addEventListener('click',()=>{overlay.hidden=true;button.focus()});
+ overlay.addEventListener('click',e=>{if(e.target===overlay)close.click()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)close.click()});
 })();
 </script>
 </body></html>
